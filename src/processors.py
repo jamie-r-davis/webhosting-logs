@@ -39,8 +39,10 @@ class HitCounter:
 def process_logfile(filepath: Union[str, Path]) -> pd.DataFrame:
     """Processes a single log file, returning a dataframe of hits per unique clients/user agents per day for each
     domain"""
-    print(f"Processing started: {filepath}")
+    chunksize = 50_000
     counter = HitCounter()
+    print(f"Processing started: {filepath}")
+
     dtypes = {
         "domain": pd.StringDtype(),
         "client": pd.StringDtype(),
@@ -48,10 +50,11 @@ def process_logfile(filepath: Union[str, Path]) -> pd.DataFrame:
         "time": pd.StringDtype(),
     }
     with pd.read_csv(
-        filepath, sep="\t", dtype=dtypes, parse_dates=["time"], chunksize=50000
+        filepath, sep="\t", dtype=dtypes, parse_dates=["time"], chunksize=chunksize
     ) as reader:
-        for chunk in reader:
+        for i, chunk in enumerate(reader):
             counter.add_data(chunk)
+            print(f"{filepath.name}: {(i+1)*chunksize:,} rows processed")
     return counter.hits_per_month
 
 
