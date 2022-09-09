@@ -60,6 +60,8 @@ def process():
 def preprocess(domains, start=None, end=None):
     if domains[0] == "all":
         domains = [x for x in SRC_DIR.iterdir() if x.is_dir()]
+    else:
+        domains = [SRC_DIR / domain for domain in domains]
     print(f"Preprocessing domains: {', '.join(x.name for x in domains)}...")
     start = start or datetime(2021, 8, 1)
     end = end or datetime(2022, 7, 31)
