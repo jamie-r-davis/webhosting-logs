@@ -5,6 +5,10 @@ name = "pypi"
 
 [packages]
 pandas = "*"
+sqlalchemy = "*"
+apachelogs = "*"
+pytz = "*"
+click = "*"
 
 [dev-packages]
 

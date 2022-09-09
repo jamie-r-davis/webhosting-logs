@@ -23,11 +23,21 @@ pipenv install
 
 Once you have all of the project dependencies installed, you will be ready to begin parsing your log files.
 
-By default, the script will search for any `.csv` files in the `data/` directory. You can change the search location by specifying a different `SRC_DIR` in `main.py`. As the script parses each source file, it will generate the aggregated stats for that file in `output/{filename}.processed.{ext}`. You can modify the output path by changing `OUTPUT_DIR`. 
+## Usage
+This script is configured to parse the web logs in two phases. The first phase is a 'preprocessing' phase where data from each domain is parsed and filtered into a collection of csv files, each containing a subset of filtered entries that meet the project criteria.
 
-Once you have placed the appropriate log files in the source directory, run the script like so:
+Once data has been preprocessed, the 'processing' phase aggregates the monthly statistics for each domain by deduplicating client + user agent entries by day.
+
+To run the preprocessing, use the following command:
 ```bash
-python main.py
+pipenv run python main.py preprocess all
+```
+This will iterate through each domain in your `data/` folder and parse the raw logs. If you want to only parse a particular subset of domains, replace the `all` argument with a list of domains (eg, `detroit debate2020 admissions`).
+
+Once the preprocessing has finished, a collection of csvs will have been generated in the `output/preprocessed/` directory. To parse the monthly statistics, run:
+
+```bash
+pipenv run python main.py process
 ```
 
-The script processes your source files in parallel using a thread pool that will automatically scale based on the number of cores available to your machine. As it finishes processing, output will be logged to stdout and the results will be saved in the output directory.
+This will generate a set of csvs containing the monthly statistics for each domain in the `output/processed/` directory.
