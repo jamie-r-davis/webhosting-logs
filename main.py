@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import click
+import pandas as pd
 
 from src.exceptions import DomainContinuityError
 from src.handlers import CSVFileHandler, StdOutHandler
@@ -20,6 +21,12 @@ PROCESSED_DIR = OUTPUT_DIR / "processed"
 @click.group()
 def cli():
     pass
+
+
+def collect_stats():
+    df = pd.concat(pd.read_csv(f) for f in PROCESSED_DIR.glob("*/*.csv"))
+    df.to_csv(PROCESSED_DIR / "monthly_stats.csv", index=False, header=True)
+    print(df)
 
 
 @cli.command()
@@ -44,6 +51,7 @@ def process():
                 handlers = [CSVFileHandler(filepath=output_path), StdOutHandler()]
                 for handler in handlers:
                     handler.handle_output(output)
+    collect_stats()
 
 
 @cli.command()

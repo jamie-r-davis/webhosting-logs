@@ -40,4 +40,4 @@ Once the preprocessing has finished, a collection of csvs will have been generat
 pipenv run python main.py process
 ```
 
-This will generate a set of csvs containing the monthly statistics for each domain in the `output/processed/` directory.
+This will generate a `monthly_stats.csv` file in the `output/processed` directory along with individual csvs broken out by domain of the parsed data.
