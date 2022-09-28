@@ -93,7 +93,9 @@ def count(domains: tuple[str]):
         for file in domain.rglob("*.[0-9]?????"):
             print(f"  - Reading: {file.name}...")
             count_log_entries(file, [acquia, daily])
-        acquia.to_df().to_csv(counter_dir / f"{domain.name}-acquia.csv", index=False)
+        acquia.to_df().to_csv(
+            counter_dir / f"{domain.name}-{acquia.counter_prefix}.csv", index=False
+        )
         daily.to_df().to_csv(
             counter_dir / f"{domain.name}-dailytraffic.csv", index=False
         )
@@ -114,7 +116,7 @@ def count_threaded(domains: tuple[str]):
     for domain in domains:
         print(f"Parsing domain: {domain.name}")
         df = pd.DataFrame()
-        with ProcessPoolExecutor(6) as ex:
+        with ProcessPoolExecutor() as ex:
             futures = {}
             for file in domain.rglob("*.[0-9]?????"):
                 print(f"  - Submitted for processing: {file.name}")
@@ -141,7 +143,7 @@ def count_threaded(domains: tuple[str]):
                     df = pd.concat([df, counter.report()])
 
         if len(df) > 0:
-            report_file = counter_dir / f"{domain.name}.csv"
+            report_file = counter_dir / f"{domain.name}-{counter.name}.csv"
             df = df.groupby(["domain", "date"]).sum(numeric_only=False)
             df.to_csv(report_file)
             print(f"Report Created: {report_file.name}")
