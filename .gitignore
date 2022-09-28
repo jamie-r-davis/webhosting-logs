@@ -145,3 +145,4 @@ cython_debug/
 data/
 output/
 .env
+.DS_Store

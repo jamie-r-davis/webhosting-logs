@@ -28,8 +28,6 @@ def count_log_entries(logfile: Union[str, Path], counters: list[AbstractCounter]
         try:
             entry = parser.parse(line)
         except (InvalidEntryError, ValueError):
-            print("Parse Error:")
-            print(line)
             continue
         else:
             record = LogRecord(logfile.name, i + 1, entry)
