@@ -4,56 +4,61 @@ from urllib.parse import urlparse
 
 from apachelogs import LogEntry
 
+from .utils import split_request_line
+
 DEFAULT_FILTERED_EXTENSIONS = [
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".pdf",
-    ".svg",
-    ".ico",
     ".css",
+    ".ico",
+    ".jpeg",
+    ".jpg",
     ".js",
+    ".json",
+    ".pdf",
+    ".png",
+    ".rss",
+    ".svg",
+    ".tif",
+    ".tiff",
+    ".txt",
+    ".woff",
+    ".xml",
 ]
 
 
-def split_request_line(value: str) -> tuple[str, str, str]:
-    if not isinstance(value, str):
-        raise ValueError(f"Unable to split request line: {value}")
-    method, uri, protocol = value.split(" ")
-    return method, uri, protocol
-
-
-class Validator(Protocol):
-    def validate(self, entry: LogEntry) -> bool:
+class Filter(Protocol):
+    def filter(self, entry: LogEntry) -> bool:
         ...
 
 
-class StatusValidator:
-    def validate(self, entry: LogEntry) -> bool:
-        if entry.status in (303, 304, 305):
+class StatusFilter:
+    def __init__(self, redirects_ok: bool = True):
+        self.redirects_ok = redirects_ok
+
+    def filter(self, entry: LogEntry) -> bool:
+        if self.redirects_ok and entry.status in (303, 304, 305):
             return True
         if 200 <= entry.status < 300:
             return True
         return False
 
 
-class RequestTimeValidator:
+class RequestTimeFilter:
     def __init__(self, start: datetime, end: datetime):
         """Validates whether the entry's request_time falls within the configured date range"""
         self.start = start
         self.end = end
 
-    def validate(self, entry: LogEntry):
+    def filter(self, entry: LogEntry):
         if self.start <= entry.request_time < self.end:
             return True
         return False
 
 
-class MethodValidator:
+class MethodFilter:
     def __init__(self, methods: list[str]):
         self.methods = [x.upper() for x in methods]
 
-    def validate(self, entry: LogEntry) -> bool:
+    def filter(self, entry: LogEntry) -> bool:
         """Validates whether the entry's request method matches the allowed methods"""
         try:
             method, _, _ = split_request_line(entry.request_line)
@@ -65,11 +70,11 @@ class MethodValidator:
         return False
 
 
-class UriValidator:
+class UriFilter:
     def __init__(self, exclusions: list[str]):
         self.exclusions = exclusions
 
-    def validate(self, entry: LogEntry):
+    def filter(self, entry: LogEntry):
         """Validates whether the entry's URI is well-formed and does not match any exclusions."""
         try:
             _, uri, _ = split_request_line(entry.request_line)
@@ -82,12 +87,12 @@ class UriValidator:
         return True
 
 
-class UriExtensionValidator:
+class UriExtensionFilter:
     def __init__(self, filtered_extensions: list[str] = None):
         """Validator that filters entries by checking for specific extensions within the uri of the request line."""
         self.filtered_extensions = filtered_extensions or DEFAULT_FILTERED_EXTENSIONS
 
-    def validate(self, entry: LogEntry) -> bool:
+    def filter(self, entry: LogEntry) -> bool:
         try:
             _, uri, _ = split_request_line(entry.request_line)
         except ValueError:

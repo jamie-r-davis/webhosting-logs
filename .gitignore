@@ -144,3 +144,4 @@ cython_debug/
 # project input/output
 data/
 output/
+.env

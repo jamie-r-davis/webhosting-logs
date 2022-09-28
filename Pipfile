@@ -9,6 +9,7 @@ sqlalchemy = "*"
 apachelogs = "*"
 pytz = "*"
 click = "*"
+python-dotenv = "*"
 
 [dev-packages]
 pytest = "*"

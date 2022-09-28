@@ -1,9 +1,11 @@
 import functools
+import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Union
 
-import pytz
+DOMAIN_RE = re.compile(r"^(?P<domain>.+?)(?:[:\-/]443)?\.\d{6}(?:\.gz)?$")
 
 
 def timeit(f):
@@ -24,14 +26,25 @@ def timeit(f):
     return wrapper
 
 
-def localize_dttm(datetime: datetime, zone: str):
-    """Localizes a datetime to the indicated timezone."""
-    tz = pytz.timezone(zone)
-    return tz.localize(datetime)
+def split_request_line(value: str) -> tuple[str, str, str]:
+    if not isinstance(value, str):
+        raise ValueError(f"Unable to split request line: {value}")
+    method, uri, protocol = value.split(" ")
+    return method, uri, protocol
 
 
-def ensure_path(value: Union[Path, str]) -> Path:
-    """Ensures that the provided value is a path object"""
-    if isinstance(value, str):
-        return Path(value)
-    return value
+def domain_from_filename(file: Union[str, Path]) -> str:
+    file = Path(file)
+    matched = DOMAIN_RE.match(file.name)
+    if matched is None:
+        raise ValueError(f"Could not parse domain: {file.name}")
+    return matched.group("domain")
+
+
+def gather_domains(domains: tuple[str], source_dir: Union[Path, str]) -> list[Path]:
+    source_dir = Path(source_dir)
+    if domains[0] == "all":
+        domains = [x for x in source_dir.iterdir() if x.is_dir()]
+    else:
+        domains = [source_dir / domain for domain in domains]
+    return domains
