@@ -10,6 +10,7 @@ from src.models import LogRecord
 
 
 class AbstractCounter(ABC):
+    name: str
     filters: list[filters.Filter]
     fields: list[str]
     adapters: {}
@@ -73,6 +74,7 @@ class AcquiaCounter(AbstractCounter):
     described on Acquia's Usage Limits page (https://docs.acquia.com/cloud-platform/subs/usage-limits/#what-s-a-view).
     """
 
+    name = "acquia"
     filters = [
         filters.StatusFilter(redirects_ok=False),
         filters.MethodFilter(["GET"]),
@@ -106,6 +108,7 @@ class DailyTrafficCounter(AbstractCounter):
     pages within the domain on the same day, your activity would count as one visit.
     """
 
+    name = "daily-traffic"
     filters = [
         filters.StatusFilter(redirects_ok=True),
         filters.MethodFilter(["GET"]),
