@@ -26,91 +26,26 @@ def cli():
     pass
 
 
-def collect_stats():
-    df = pd.concat(pd.read_csv(f) for f in PROCESSED_DIR.glob("*/*.csv"))
-    df.to_csv(PROCESSED_DIR / "monthly_stats.csv", index=False, header=True)
-    print(df)
-
-
-@cli.command()
-@timeit
-def process():
-    files = PREPROCESSED_DIR.rglob("*.csv")
-    with ThreadPoolExecutor() as executor:
-        futures = {executor.submit(process_logfile, file): file for file in files}
-        for future in as_completed(futures):
-            filename: Path = futures[future]
-            try:
-                output = future.result()
-            except Exception as e:
-                print(f"{filename.name} generated an exception:\n{e}")
-            else:
-                print(f"{filename.name} processed")
-                domain = filename.parent.name
-                output_name = f"{filename.stem}.processed.csv"
-                output_path = PROCESSED_DIR / domain / output_name
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                print(output_path)
-                handlers = [CSVFileHandler(filepath=output_path), StdOutHandler()]
-                for handler in handlers:
-                    handler.handle_output(output)
-    collect_stats()
-
-
-@cli.command()
-@click.argument("domains", nargs=-1)
-@timeit
-def preprocess(domains, start=None, end=None):
-    domains = gather_domains(domains, SRC_DIR)
-    print(f"Preprocessing domains: {', '.join(x.name for x in domains)}...")
-    start = start or datetime(2021, 8, 1)
-    end = end or datetime(2022, 7, 31)
-    out_dir = Path("output/preprocessed")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for domain in domains:
-        domain_out_dir = out_dir / domain.name
-        try:
-            parse_domain_by_month(domain, domain_out_dir, start, end, validate=False)
-        except DomainContinuityError as e:
-            ex_type, ex_value, ex_traceback = sys.exc_info()
-            print(f"{ex_type.__name__}: {ex_value}")
-            pass
-
-
-@cli.command()
-@click.argument("domains", nargs=-1)
-@timeit
-def count(domains: tuple[str]):
-    """Count the number of hits for the provided domains"""
-    domains = gather_domains(domains, SRC_DIR)
-    print(f"Preprocessing domains: {', '.join(x.name for x in domains)}...")
-    counter_dir = OUTPUT_DIR / "counts"
-    counter_dir.mkdir(parents=True, exist_ok=True)
-    for domain in domains:
-        acquia = AcquiaCounter()
-        daily = DailyTrafficCounter()
-        print(f"Parsing domain: {domain.name}")
-        for file in domain.rglob("*.[0-9]?????"):
-            print(f"  - Reading: {file.name}...")
-            count_log_entries(file, [acquia, daily])
-        acquia.to_df().to_csv(
-            counter_dir / f"{domain.name}-{acquia.counter_prefix}.csv", index=False
-        )
-        daily.to_df().to_csv(
-            counter_dir / f"{domain.name}-dailytraffic.csv", index=False
-        )
-
-
 @cli.command()
 @click.option(
     "-c",
     "--counter",
     type=click.Choice(["acquia", "daily-traffic"]),
     prompt="Which counter should be used?",
+    help="The counting method to use for analysis.",
 )
 @click.argument("domains", nargs=-1)
 @timeit
-def count_threaded(counter: str, domains: tuple[str, ...]):
+def analyze(counter: str, domains: tuple[str, ...]):
+    """
+    Parse log files for the given domains, returning counts of views and visitors by day.
+
+    The methodology used depends upon the type of counter that is chosen. Currently, only two counters are implemented:
+
+        :Acquia: Filters and counts traffic according to the methodology outlined by Acquia.
+
+        :Daily Traffic: Filters and counts daily traffic with unique client/user agent combinations.
+    """
     # administrative tasks
     domains = gather_domains(domains, SRC_DIR)
     counter_dir = OUTPUT_DIR / "counts"
