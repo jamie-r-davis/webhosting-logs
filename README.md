@@ -1,8 +1,6 @@
 # Web Hosting Logs
 
-A simple script to parse & aggregate traffic from web server logs.
-
-This script will parse csv files from a source directory and count the unique number of hits for a given domain within a particular month. Unique hits are defined as unique client + user agent combinations logged within a single day (eg, if my browser visits a domain twice in one day, that will count as one hit).
+A simple script to parse & aggregate traffic from web server logs, counting the number of hits using different methodologies.
 
 
 ## Getting Started
@@ -23,21 +21,56 @@ pipenv install
 
 Once you have all of the project dependencies installed, you will be ready to begin parsing your log files.
 
+
 ## Usage
-This script is configured to parse the web logs in two phases. The first phase is a 'preprocessing' phase where data from each domain is parsed and filtered into a collection of csv files, each containing a subset of filtered entries that meet the project criteria.
 
-Once data has been preprocessed, the 'processing' phase aggregates the monthly statistics for each domain by deduplicating client + user agent entries by day.
-
-To run the preprocessing, use the following command:
-```bash
-pipenv run python main.py preprocess all
-```
-This will iterate through each domain in your `data/` folder and parse the raw logs. If you want to only parse a particular subset of domains, replace the `all` argument with a list of domains (eg, `detroit debate2020 admissions`).
-
-Once the preprocessing has finished, a collection of csvs will have been generated in the `output/preprocessed/` directory. To parse the monthly statistics, run:
-
-```bash
-pipenv run python main.py process
+To begin analyzing your log files, you will need to have the available on your machine with the files for each domain within their own subfolders:
+```text
+logfiles/
+├─ domain1/
+│  ├─ domain1.080122.gz
+│  ├─ domain1.080222.gz
+│  ├─ ...
+├─ domain2/
+   ├─ ...
 ```
 
-This will generate a `monthly_stats.csv` file in the `output/processed` directory along with individual csvs broken out by domain of the parsed data.
+and set a `SRC_DIR` environment variable with the absolute path to the directory containing your logs. For convenience, you can create a `.env` file in the root of the project folder and declare your variable like so:
+```dotenv
+# .env
+SRC_DIR=/source/to/your/logfiles
+```
+
+Then, from the command line, run the following command to start the analysis of all domains:
+```bash
+pipenv run python main.py analyze --counter daily-traffic all
+```
+
+If you only want to analyze a subset of domains, replace the `all` argument with a list of domains:
+```bash
+pipenv run python main.py analyze --counter daily-traffic domain1 domain2
+```
+
+The script will analyze any log files that it finds for the specified domains and keep a count of all valid traffic. What qualifies as valid traffic depends on the counter you choose at runtime. If a `--counter` option is not specified from the command line, you will be prompted before the anlaysis begins.
+
+## Output
+
+Once the script has finished analyzing a domain, a statistics csv will be generated in the output folder within the project. This will contain the domain, date, visits, and views for the analyzed logs.
+
+
+## Counters
+
+### Acquia
+The Acquia implements the logic laid out by Acquia for how they count visits and views:
+- Only 200-level GET requests
+- Exclude requests for static content
+- Exclude traffic from known bots
+- Visits are counted as unique user agent + remote host combinations per hour
+- Views are all requests that meet the above criteria
+
+### Daily Traffic
+The Daily Traffic counter intends to count unique visits by implementing the following logic:
+- Only 200 & 300 level GET requests
+- Exclude traffic to `robots.txt`, `favicon`, and `.well-known` URIs
+- Visits are defined as unique user agent + remote host combinations per day
+- Views are all requests that meet the above criteria
