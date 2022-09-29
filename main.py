@@ -102,13 +102,21 @@ def count(domains: tuple[str]):
 
 
 @cli.command()
+@click.option(
+    "-c",
+    "--counter",
+    type=click.Choice(["acquia", "daily-traffic"]),
+    prompt="Which counter should be used?",
+)
 @click.argument("domains", nargs=-1)
 @timeit
-def count_threaded(domains: tuple[str]):
+def count_threaded(counter: str, domains: tuple[str, ...]):
     # administrative tasks
     domains = gather_domains(domains, SRC_DIR)
     counter_dir = OUTPUT_DIR / "counts"
     counter_dir.mkdir(parents=True, exist_ok=True)
+    counter_map = {"acquia": AcquiaCounter, "daily-traffic": DailyTrafficCounter}
+    counter_class = counter_map[counter]
 
     # iterate over each domain, parsing the logs via a thread pool,
     # collecting the results into a dataframe, and writing the collected
@@ -124,26 +132,26 @@ def count_threaded(domains: tuple[str]):
                     threaded_count_log_entries,
                     logfile=file,
                     log_format=Config.LOG_FORMAT,
-                    counter_class=DailyTrafficCounter,
+                    counter_class=counter_class,
                 )
                 futures[future] = file
             for future in as_completed(futures):
                 file = futures[future]
                 try:
-                    counter = future.result()
+                    counter_obj = future.result()
                 except Exception as e:
                     print(f"{file.name} raised an exception: {e}")
                 else:
-                    report = counter.report()
+                    report = counter_obj.report()
                     total_visits = report.visits.sum()
                     total_views = report.views.sum()
                     print(
                         f"  - Processed: {file.name} ({total_visits:,} visits; {total_views:,} views)"
                     )
-                    df = pd.concat([df, counter.report()])
+                    df = pd.concat([df, counter_obj.report()])
 
         if len(df) > 0:
-            report_file = counter_dir / f"{domain.name}-{counter.name}.csv"
+            report_file = counter_dir / f"{domain.name}-{counter_obj.name}.csv"
             df = df.groupby(["domain", "date"]).sum(numeric_only=False)
             df.to_csv(report_file)
             print(f"Report Created: {report_file.name}")
