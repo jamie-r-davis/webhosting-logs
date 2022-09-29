@@ -27,9 +27,6 @@ class AbstractCounter(ABC):
     def handle(self, record: LogRecord) -> bool:
         if self.filter(record):
             self.add_entry(record)
-        else:
-            print(f"Invalid row: {record.row}")
-            print(record.entry.entry)
 
     def add_entry(self, record: LogRecord):
         attrs = []
@@ -61,8 +58,12 @@ class AbstractCounter(ABC):
 
     def to_df(self) -> pd.DataFrame:
         if len(self.data) == 0:
-            return pd.DataFrame(columns=self.fields + ["views"])
-        return pd.DataFrame(self.flattened_data)
+            df = pd.DataFrame(columns=self.fields + ["views"])
+        else:
+            df = pd.DataFrame(self.flattened_data)
+        if "request_time" in self.fields:
+            df["request_time"] = pd.to_datetime(df.request_time)
+        return df
 
     def report(self) -> pd.DataFrame:
         raise NotImplementedError
@@ -95,7 +96,7 @@ class AcquiaCounter(AbstractCounter):
 
         # reset the index and rename columns
         grouped = grouped.reset_index().rename(
-            {"request_time": "date", "count": "visits", "sum": "views"}
+            columns={"request_time": "date", "count": "visits", "sum": "views"}
         )
         return grouped
 
