@@ -12,7 +12,7 @@ from src.models import LogRecord
 def read_logfile(logfile: Path) -> Iterable[str]:
     """Opens the logfile (whether gzipped or not) and returns an iterator of its lines."""
     if logfile.suffix == ".gz":
-        with open(logfile, "rt") as file:
+        with gzip.open(logfile, "rt") as file:
             for line in file:
                 yield line
     else:
