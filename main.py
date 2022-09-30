@@ -1,19 +1,12 @@
-import sys
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from datetime import datetime
-from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import click
 import pandas as pd
 
 from config import Config
 from src.counters import AcquiaCounter, DailyTrafficCounter
-from src.exceptions import DomainContinuityError
-from src.handlers import CSVFileHandler, StdOutHandler
-from src.preprocessing import parse_domain_by_month
-from src.processors import process_logfile
-from src.services import count_log_entries, threaded_count_log_entries
-from src.utils import gather_domains, timeit
+from src.services import threaded_count_log_entries
+from src.utils import gather_domains, gather_files, timeit
 
 SRC_DIR = Config.SRC_DIR
 OUTPUT_DIR = Config.OUTPUT_DIR
@@ -47,6 +40,7 @@ def analyze(counter: str, domains: tuple[str, ...]):
         :Daily Traffic: Filters and counts daily traffic with unique client/user agent combinations.
     """
     # administrative tasks
+    print(f"Scanning source directory: {SRC_DIR}")
     domains = gather_domains(domains, SRC_DIR)
     counter_dir = OUTPUT_DIR / "counts"
     counter_dir.mkdir(parents=True, exist_ok=True)
@@ -61,7 +55,7 @@ def analyze(counter: str, domains: tuple[str, ...]):
         df = pd.DataFrame()
         with ProcessPoolExecutor() as ex:
             futures = {}
-            for file in domain.rglob("*.[0-9]?????"):
+            for file in gather_files(domain):
                 print(f"  - Submitted for processing: {file.name}")
                 future = ex.submit(
                     threaded_count_log_entries,

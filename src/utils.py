@@ -1,11 +1,11 @@
 import functools
 import re
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Union
 
 DOMAIN_RE = re.compile(r"^(?P<domain>.+?)(?:[:\-/]443)?\.\d{6}(?:\.gz)?$")
+FILE_RE = re.compile("^.*?\.\d{6}(\.gz)?$")
 
 
 def timeit(f):
@@ -48,3 +48,9 @@ def gather_domains(domains: tuple[str], source_dir: Union[Path, str]) -> list[Pa
     else:
         domains = [source_dir / domain for domain in domains]
     return domains
+
+
+def gather_files(domain: Path):
+    for file in sorted(domain.rglob("*"), key=lambda x: x.name):
+        if file.is_file() and FILE_RE.match(file.name):
+            yield file
